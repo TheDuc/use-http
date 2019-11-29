@@ -54,9 +54,7 @@ function makeRouteAndOptions(initialOptions, url, path, method, controller, rout
             return headers;
         })();
         const options = yield (() => __awaiter(this, void 0, void 0, function* () {
-            const opts = Object.assign(Object.assign({}, initialOptions), { url,
-                path,
-                method, signal: controller.signal });
+            const opts = Object.assign(Object.assign({}, initialOptions), { method, signal: controller.signal });
             if (headers !== null) {
                 opts.headers = headers;
             }
@@ -66,7 +64,7 @@ function makeRouteAndOptions(initialOptions, url, path, method, controller, rout
             if (body !== null)
                 opts.body = body;
             if (requestInterceptor)
-                return yield requestInterceptor(opts, url, path);
+                return yield requestInterceptor(opts, url, path, route);
             return opts;
         }))();
         return {

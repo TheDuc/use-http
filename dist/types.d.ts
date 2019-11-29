@@ -64,7 +64,7 @@ export declare type UseFetchObjectReturn<TData> = ReqBase<TData> & ReqMethods & 
 };
 export declare type UseFetch<TData> = UseFetchArrayReturn<TData> & UseFetchObjectReturn<TData>;
 export declare type Interceptors = {
-    request?: (options: Options, url: string, path: string) => Promise<Options> | Options;
+    request?: (options: Options, url: string, path: string, route: string) => Promise<Options> | Options;
     response?: (response: Res<any>) => Res<any>;
 };
 export interface CustomOptions {
