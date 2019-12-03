@@ -38,7 +38,7 @@ function useFetchArgs(urlOrOptionsOrOverwriteGlobal, optionsNoURLsOrOverwriteGlo
             return context.options;
         // make a copy so we make sure not to modify the original context
         return overwriteGlobalOptions(Object.assign({}, context.options));
-    }, []);
+    }, [context.options]);
     const urlOrOptions = urlOrOptionsOrOverwriteGlobal;
     const optionsNoURLs = optionsNoURLsOrOverwriteGlobalOrDeps;
     utils_1.invariant(!(utils_1.isObject(urlOrOptions) && utils_1.isObject(optionsNoURLs)), 'You cannot have a 2nd parameter of useFetch when your first argument is an object config.');
