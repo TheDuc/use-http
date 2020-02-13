@@ -3,6 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const types_1 = require("./types");
 const utils_1 = require("./utils");
 const react_1 = require("react");
 const FetchContext_1 = __importDefault(require("./FetchContext"));
@@ -17,6 +18,9 @@ exports.useFetchArgsDefaults = {
         onAbort: () => { },
         onTimeout: () => { },
         onNewData: (currData, newData) => newData,
+        perPage: 0,
+        cachePolicy: types_1.CachePolicies.CACHE_FIRST,
+        cacheLife: 0
     },
     requestInit: { headers: {} },
     defaults: {
@@ -58,7 +62,7 @@ function useFetchArgs(urlOrOptionsOrOverwriteGlobal, optionsNoURLsOrOverwriteGlo
         if (Array.isArray(deps))
             return deps;
         return defaults.dependencies;
-    }, []);
+    }, [optionsNoURLsOrOverwriteGlobalOrDeps, deps]);
     const data = useField('data', urlOrOptions, optionsNoURLs);
     const path = useField('path', urlOrOptions, optionsNoURLs);
     const timeout = useField('timeout', urlOrOptions, optionsNoURLs);
@@ -66,6 +70,9 @@ function useFetchArgs(urlOrOptionsOrOverwriteGlobal, optionsNoURLsOrOverwriteGlo
     const onAbort = useField('onAbort', urlOrOptions, optionsNoURLs);
     const onTimeout = useField('onTimeout', urlOrOptions, optionsNoURLs);
     const onNewData = useField('onNewData', urlOrOptions, optionsNoURLs);
+    const perPage = useField('perPage', urlOrOptions, optionsNoURLs);
+    const cachePolicy = useField('cachePolicy', urlOrOptions, optionsNoURLs);
+    const cacheLife = useField('cacheLife', urlOrOptions, optionsNoURLs);
     const loading = react_1.useMemo(() => {
         if (utils_1.isObject(urlOrOptions))
             return !!urlOrOptions.loading || Array.isArray(dependencies);
@@ -110,6 +117,9 @@ function useFetchArgs(urlOrOptionsOrOverwriteGlobal, optionsNoURLsOrOverwriteGlo
             onAbort,
             onTimeout,
             onNewData,
+            perPage,
+            cachePolicy,
+            cacheLife,
         },
         requestInit,
         defaults: {

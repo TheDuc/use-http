@@ -11,6 +11,12 @@ export declare const isString: (x: any) => x is string;
  * @param obj
  */
 export declare const isObject: (obj: any) => obj is object;
+/**
+ * Determines if the given param is an object that can be used as a request body.
+ * Returns true for native objects or arrays.
+ * @param obj
+ */
+export declare const isBodyObject: (obj: any) => boolean;
 export declare const isFunction: (v: any) => boolean;
 /**
  * Makes an object that will match the standards of a normal fetch's options

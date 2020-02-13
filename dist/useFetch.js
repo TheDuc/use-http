@@ -13,11 +13,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const react_1 = require("react");
+const use_ssr_1 = __importDefault(require("use-ssr"));
 const types_1 = require("./types");
 const useFetchArgs_1 = __importDefault(require("./useFetchArgs"));
-const use_ssr_1 = __importDefault(require("use-ssr"));
-const makeRouteAndOptions_1 = __importDefault(require("./makeRouteAndOptions"));
+const doFetchArgs_1 = __importDefault(require("./doFetchArgs"));
 const utils_1 = require("./utils");
+const { CACHE_FIRST } = types_1.CachePolicies;
 const responseMethods = ['clone', 'error', 'redirect', 'arrayBuffer', 'blob', 'formData', 'json', 'text'];
 const makeResponseProxy = (res = {}) => new Proxy(res, {
     get: (httpResponse, key) => {
@@ -26,17 +27,20 @@ const makeResponseProxy = (res = {}) => new Proxy(res, {
         return (httpResponse.current || {})[key];
     }
 });
+const cache = new Map();
 function useFetch(...args) {
     const { customOptions, requestInit, defaults, dependencies } = useFetchArgs_1.default(...args);
-    const { url, path, interceptors, timeout, retries, onTimeout, onAbort, onNewData, } = customOptions;
+    const { url: initialURL, path, interceptors, timeout, retries, onTimeout, onAbort, onNewData, perPage, cachePolicy, // 'cache-first' by default
+    cacheLife, } = customOptions;
     const { isServer } = use_ssr_1.default();
     const controller = react_1.useRef();
     const res = react_1.useRef({});
     const data = react_1.useRef(defaults.data);
     const timedout = react_1.useRef(false);
     const attempts = react_1.useRef(retries);
+    const error = react_1.useRef();
+    const hasMore = react_1.useRef(true);
     const [loading, setLoading] = react_1.useState(defaults.loading);
-    const [error, setError] = react_1.useState();
     const makeFetch = react_1.useCallback((method) => {
         const doFetch = (routeOrBody, body) => __awaiter(this, void 0, void 0, function* () {
             if (isServer)
@@ -44,9 +48,25 @@ function useFetch(...args) {
             controller.current = new AbortController();
             controller.current.signal.onabort = onAbort;
             const theController = controller.current;
+            let { url, options, requestID } = yield doFetchArgs_1.default(requestInit, initialURL, path, method, theController, routeOrBody, body, interceptors.request);
+            const isCached = cache.has(requestID);
+            const cachedData = cache.get(requestID);
+            if (isCached && cachePolicy === CACHE_FIRST) {
+                const whenCached = cache.get(requestID + ':ts');
+                let age = Date.now() - whenCached;
+                if (cacheLife > 0 && age > cacheLife) {
+                    cache.delete(requestID);
+                    cache.delete(requestID + ':ts');
+                }
+                else {
+                    return cachedData;
+                }
+            }
+            // don't perform the request if there is no more data to fetch (pagination)
+            if (perPage > 0 && !hasMore.current && !error.current)
+                return data.current;
             setLoading(true);
-            setError(undefined);
-            let { route, options } = yield makeRouteAndOptions_1.default(requestInit, url, path, method, theController, routeOrBody, body, interceptors.request);
+            error.current = undefined;
             const timer = timeout > 0 && setTimeout(() => {
                 timedout.current = true;
                 theController.abort();
@@ -54,31 +74,43 @@ function useFetch(...args) {
                     onTimeout();
             }, timeout);
             let newData;
-            let theRes;
+            let newRes;
             try {
-                theRes = ((yield fetch(`${url}${path}${route}`, options)) || {});
-                res.current = theRes.clone();
+                newRes = ((yield fetch(url, options)) || {});
+                res.current = newRes.clone();
                 try {
-                    newData = yield theRes.json();
+                    newData = yield newRes.json();
                 }
-                catch (err) {
-                    newData = (yield theRes.text()); // FIXME: should not be `any` type
+                catch (er) {
+                    try {
+                        newData = (yield newRes.text()); // FIXME: should not be `any` type
+                    }
+                    catch (er) { }
                 }
                 newData = (defaults.data && utils_1.isEmpty(newData)) ? defaults.data : newData;
                 res.current.data = onNewData(data.current, newData);
                 res.current = interceptors.response ? interceptors.response(res.current) : res.current;
                 utils_1.invariant('data' in res.current, 'You must have `data` field on the Response returned from your `interceptors.response`');
                 data.current = res.current.data;
+                if (Array.isArray(data.current) && !!(data.current.length % perPage))
+                    hasMore.current = false;
+                if (cachePolicy === CACHE_FIRST) {
+                    cache.set(requestID, data.current);
+                    if (cacheLife > 0)
+                        cache.set(requestID + ':ts', Date.now());
+                }
             }
             catch (err) {
                 if (attempts.current > 0)
                     return doFetch(routeOrBody, body);
                 if (attempts.current < 1 && timedout.current)
-                    setError({ name: 'AbortError', message: 'Timeout Error' });
+                    error.current = { name: 'AbortError', message: 'Timeout Error' };
                 if (err.name !== 'AbortError')
-                    setError(err);
+                    error.current = err;
             }
             finally {
+                if (newRes && !newRes.ok && !error.current)
+                    error.current = { name: newRes.status, message: newRes.statusText };
                 if (attempts.current > 0)
                     attempts.current -= 1;
                 timedout.current = false;
@@ -90,7 +122,7 @@ function useFetch(...args) {
             return data.current;
         });
         return doFetch;
-    }, [url, requestInit, isServer]);
+    }, [initialURL, requestInit, isServer]);
     const post = react_1.useCallback(makeFetch(types_1.HTTPMethod.POST), [makeFetch]);
     const del = react_1.useCallback(makeFetch(types_1.HTTPMethod.DELETE), [makeFetch]);
     const request = {
@@ -104,7 +136,7 @@ function useFetch(...args) {
         query: (query, variables) => post({ query, variables }),
         mutate: (mutation, variables) => post({ mutation, variables }),
         loading: loading,
-        error,
+        error: error.current,
         data: data.current,
     };
     // onMount/onUpdate
@@ -112,20 +144,14 @@ function useFetch(...args) {
         if (dependencies && Array.isArray(dependencies)) {
             const methodName = requestInit.method || types_1.HTTPMethod.GET;
             const methodLower = methodName.toLowerCase();
-            if (methodName !== types_1.HTTPMethod.GET) {
-                const req = request[methodLower];
-                req(requestInit.body);
-            }
-            else {
-                const req = request[methodLower];
-                req();
-            }
+            const req = request[methodLower];
+            req();
         }
     }, dependencies);
     // Cancel any running request when unmounting to avoid updating state after component has unmounted
     // This can happen if a request's promise resolves after component unmounts
     react_1.useEffect(() => request.abort, []);
-    return Object.assign([request, makeResponseProxy(res), loading, error], Object.assign({ request, response: makeResponseProxy(res) }, request));
+    return Object.assign([request, makeResponseProxy(res), loading, error.current], Object.assign({ request, response: makeResponseProxy(res) }, request));
 }
 exports.useFetch = useFetch;
 exports.default = useFetch;

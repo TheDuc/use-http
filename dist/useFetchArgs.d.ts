@@ -1,4 +1,4 @@
-import { OptionsMaybeURL, NoUrlOptions } from './types';
+import { OptionsMaybeURL, NoUrlOptions, CachePolicies } from './types';
 import { Interceptors, OverwriteGlobalOptions } from './types';
 declare type UseFetchArgsReturn = {
     customOptions: {
@@ -10,6 +10,9 @@ declare type UseFetchArgsReturn = {
         onAbort: () => void;
         onTimeout: () => void;
         onNewData: (currData: any, newData: any) => any;
+        perPage: number;
+        cachePolicy: CachePolicies;
+        cacheLife: number;
     };
     requestInit: RequestInit;
     defaults: {
@@ -28,6 +31,9 @@ export declare const useFetchArgsDefaults: {
         onAbort: () => void;
         onTimeout: () => void;
         onNewData: (currData: any, newData: any) => any;
+        perPage: number;
+        cachePolicy: CachePolicies;
+        cacheLife: number;
     };
     requestInit: {
         headers: {};

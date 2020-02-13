@@ -50,6 +50,12 @@ exports.isString = (x) => typeof x === 'string'; // eslint-disable-line
  * @param obj
  */
 exports.isObject = (obj) => Object.prototype.toString.call(obj) === '[object Object]'; // eslint-disable-line
+/**
+ * Determines if the given param is an object that can be used as a request body.
+ * Returns true for native objects or arrays.
+ * @param obj
+ */
+exports.isBodyObject = (obj) => exports.isObject(obj) || Array.isArray(obj);
 exports.isFunction = (v) => typeof v === 'function';
 // TODO: come back and fix the "anys" in this http://bit.ly/2Lm3OLi
 /**
