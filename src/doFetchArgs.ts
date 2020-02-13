@@ -1,24 +1,25 @@
-import { HTTPMethod, Interceptors, ValueOf, RouteAndOptions } from './types'
-import { isObject, invariant, isBrowser, isString } from './utils'
+import { HTTPMethod, Interceptors, ValueOf, DoFetchArgs } from './types'
+import { invariant, isBrowser, isString, isBodyObject } from './utils'
 
 const { GET } = HTTPMethod
 
-export default async function makeRouteAndOptions(
+
+export default async function doFetchArgs(
   initialOptions: RequestInit,
-  url: string,
+  initialURL: string,
   path: string,
   method: HTTPMethod,
   controller: AbortController,
   routeOrBody?: string | BodyInit | object,
   bodyAs2ndParam?: BodyInit | object,
   requestInterceptor?: ValueOf<Pick<Interceptors, 'request'>>
-): Promise<RouteAndOptions> {
+): Promise<DoFetchArgs> {
   invariant(
-    !(isObject(routeOrBody) && isObject(bodyAs2ndParam)),
+    !(isBodyObject(routeOrBody) && isBodyObject(bodyAs2ndParam)),
     `If first argument of ${method.toLowerCase()}() is an object, you cannot have a 2nd argument. 😜`,
   )
   invariant(
-    !(method === GET && isObject(routeOrBody)),
+    !(method === GET && isBodyObject(routeOrBody)),
     `You can only have query params as 1st argument of request.get()`,
   )
   invariant(
@@ -32,16 +33,18 @@ export default async function makeRouteAndOptions(
     return ''
   })()
 
+  const url = `${initialURL}${path}${route}`
+
   const body = ((): BodyInit | null => {
-    if (isObject(routeOrBody)) return JSON.stringify(routeOrBody)
-    if (isObject(bodyAs2ndParam)) return JSON.stringify(bodyAs2ndParam)
+    if (isBodyObject(routeOrBody)) return routeOrBody as BodyInit
+    if (isBodyObject(bodyAs2ndParam)) return bodyAs2ndParam as BodyInit
     if (
       isBrowser &&
       ((bodyAs2ndParam as any) instanceof FormData ||
         (bodyAs2ndParam as any) instanceof URLSearchParams)
     )
       return bodyAs2ndParam as string
-    if (isObject(initialOptions.body)) return JSON.stringify(initialOptions.body)
+    if (isBodyObject(initialOptions.body)) return initialOptions.body!
     return null
   })()
 
@@ -76,12 +79,19 @@ export default async function makeRouteAndOptions(
 
     if (body !== null) opts.body = body
 
-    if (requestInterceptor) return await requestInterceptor(opts, url, path, route)
+    if (requestInterceptor) return await requestInterceptor(opts, initialURL, path, route)
     return opts
   })()
 
+  // TODO: if the body is a file, and this is a large file, it might exceed the size
+  // limit of the key size in the Map
+  // used to tell if a request has already been made
+  const requestID = Object.entries({ url, method, body: options.body || '' })
+    .map(([key, value]) => `${key}:${value}`).join('||')
+
   return {
-    route,
+    url,
     options,
+    requestID
   }
 }
