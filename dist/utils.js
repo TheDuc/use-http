@@ -87,8 +87,19 @@ exports.pullOutRequestInit = (options) => {
     }, {});
 };
 exports.isEmpty = (x) => x === undefined || x === null;
-exports.isBrowser = !!(typeof window !== 'undefined' &&
+var Device;
+(function (Device) {
+    Device["Browser"] = "browser";
+    Device["Server"] = "server";
+    Device["Native"] = "native";
+})(Device = exports.Device || (exports.Device = {}));
+const { Browser, Server, Native } = Device;
+const canUseDOM = !!(typeof window !== 'undefined' &&
     window.document &&
     window.document.createElement);
-exports.isServer = !exports.isBrowser;
+const canUseNative = typeof navigator != 'undefined' && navigator.product == 'ReactNative';
+const device = canUseNative ? Native : canUseDOM ? Browser : Server;
+exports.isBrowser = device === Browser;
+exports.isServer = device === Server;
+exports.isNative = device === Native;
 //# sourceMappingURL=utils.js.map

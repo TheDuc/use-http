@@ -24,5 +24,11 @@ export declare const isFunction: (v: any) => boolean;
  */
 export declare const pullOutRequestInit: (options?: OptionsMaybeURL | undefined) => RequestInit;
 export declare const isEmpty: (x: any) => boolean;
+export declare enum Device {
+    Browser = "browser",
+    Server = "server",
+    Native = "native"
+}
 export declare const isBrowser: boolean;
 export declare const isServer: boolean;
+export declare const isNative: boolean;

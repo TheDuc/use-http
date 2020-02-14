@@ -18,7 +18,7 @@ function doFetchArgs(initialOptions, initialURL, path, method, controller, route
         utils_1.invariant(!(method === GET && utils_1.isBodyObject(routeOrBody)), `You can only have query params as 1st argument of request.get()`);
         utils_1.invariant(!(method === GET && bodyAs2ndParam !== undefined), `You can only have query params as 1st argument of request.get()`);
         const route = (() => {
-            if (utils_1.isBrowser && routeOrBody instanceof URLSearchParams)
+            if (!utils_1.isServer && routeOrBody instanceof URLSearchParams)
                 return `?${routeOrBody}`;
             if (utils_1.isString(routeOrBody))
                 return routeOrBody;
@@ -27,15 +27,15 @@ function doFetchArgs(initialOptions, initialURL, path, method, controller, route
         const url = `${initialURL}${path}${route}`;
         const body = (() => {
             if (utils_1.isBodyObject(routeOrBody))
-                return routeOrBody;
-            if (utils_1.isBodyObject(bodyAs2ndParam))
-                return bodyAs2ndParam;
-            if (utils_1.isBrowser &&
+                return JSON.stringify(routeOrBody);
+            if (!utils_1.isServer &&
                 (bodyAs2ndParam instanceof FormData ||
                     bodyAs2ndParam instanceof URLSearchParams))
                 return bodyAs2ndParam;
+            if (utils_1.isBodyObject(bodyAs2ndParam))
+                return JSON.stringify(bodyAs2ndParam);
             if (utils_1.isBodyObject(initialOptions.body))
-                return initialOptions.body;
+                return JSON.stringify(initialOptions.body);
             return null;
         })();
         const headers = (() => {
